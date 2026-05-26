@@ -1,5 +1,6 @@
 package com.tecsup.petclinic.services;
 
+import com.tecsup.petclinic.dtos.PetCountByTypeDTO;
 import com.tecsup.petclinic.dtos.TypeDTO;
 import com.tecsup.petclinic.entities.Type;
 import com.tecsup.petclinic.exceptions.TypeNotFoundException;
@@ -13,9 +14,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
@@ -191,5 +197,70 @@ public class TypeServiceTest {
         assertNotNull(typeDTO);
         assertEquals(existingId, typeDTO.getId());
         assertEquals("cat", typeDTO.getName());
+    }
+
+    @Test
+    public void testGetPetCountByType() {
+        List<Object[]> rows = List.of(
+                new Object[]{"cat", 3L},
+                new Object[]{"dog", 5L}
+        );
+
+        when(typeRepository.getPetCountByType()).thenReturn(rows);
+
+        List<PetCountByTypeDTO> report = typeService.getPetCountByType();
+
+        assertEquals(2, report.size());
+        assertEquals("cat", report.get(0).getTypeName());
+        assertEquals(3L, report.get(0).getPetCount());
+        assertEquals("dog", report.get(1).getTypeName());
+        assertEquals(5L, report.get(1).getPetCount());
+    }
+
+    @Test
+    public void testGetPetCountByType_Empty() {
+        when(typeRepository.getPetCountByType()).thenReturn(List.of());
+
+        List<PetCountByTypeDTO> report = typeService.getPetCountByType();
+
+        assertTrue(report.isEmpty());
+    }
+
+    @Test
+    public void testDeleteType() {
+        Integer typeId = 3;
+
+        Type existingEntity = Type.builder()
+                .id(typeId)
+                .name("lizard")
+                .description("Reptile")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(10)
+                .careLevel("high")
+                .build();
+
+        TypeDTO existingTypeDTO = TypeDTO.builder()
+                .id(typeId)
+                .name("lizard")
+                .description("Reptile")
+                .active(true)
+                .sizeCategory("small")
+                .averageLifespan(10)
+                .careLevel("high")
+                .build();
+
+        when(typeRepository.findById(typeId)).thenReturn(Optional.of(existingEntity));
+        when(typeMapper.mapToDto(existingEntity)).thenReturn(existingTypeDTO);
+        when(typeMapper.mapToEntity(existingTypeDTO)).thenReturn(existingEntity);
+        doNothing().when(typeRepository).delete(existingEntity);
+
+        try {
+            typeService.delete(typeId);
+        } catch (TypeNotFoundException e) {
+            fail(e.getMessage());
+        }
+
+        verify(typeRepository, times(1)).delete(existingEntity);
     }
 }

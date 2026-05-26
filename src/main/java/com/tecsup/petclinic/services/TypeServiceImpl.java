@@ -1,5 +1,6 @@
 package com.tecsup.petclinic.services;
 
+import com.tecsup.petclinic.dtos.PetCountByTypeDTO;
 import com.tecsup.petclinic.dtos.TypeDTO;
 import com.tecsup.petclinic.entities.Type;
 import com.tecsup.petclinic.exceptions.TypeNotFoundException;
@@ -7,6 +8,8 @@ import com.tecsup.petclinic.mappers.TypeMapper;
 import com.tecsup.petclinic.repositories.TypeRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -33,11 +36,32 @@ public class TypeServiceImpl implements TypeService {
     }
 
     @Override
+    public void delete(Integer id) throws TypeNotFoundException {
+        TypeDTO typeDTO = findById(id);
+        typeRepository.delete(typeMapper.mapToEntity(typeDTO));
+    }
+
+    @Override
     public TypeDTO findById(Integer id) throws TypeNotFoundException {
         Optional<Type> type = typeRepository.findById(id);
         if (!type.isPresent()) {
             throw new TypeNotFoundException("Record not found...!");
         }
         return typeMapper.mapToDto(type.get());
+    }
+
+    @Override
+    public List<PetCountByTypeDTO> getPetCountByType() {
+        List<Object[]> rows = typeRepository.getPetCountByType();
+        List<PetCountByTypeDTO> report = new ArrayList<>();
+
+        for (Object[] row : rows) {
+            report.add(PetCountByTypeDTO.builder()
+                    .typeName((String) row[0])
+                    .petCount(((Number) row[1]).longValue())
+                    .build());
+        }
+
+        return report;
     }
 }
