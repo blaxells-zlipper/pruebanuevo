@@ -14,12 +14,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 import java.util.List;
 import java.util.Optional;
@@ -227,6 +230,21 @@ public class TypeServiceTest {
     }
 
     @Test
+    public void testGetPetCountByType_ExcludeInactive() {
+        // Repository query excludes inactive types (active=false), so they should never appear here.
+        List<Object[]> rows = List.of(
+                new Object[]{"cat", 3L},
+                new Object[]{"dog", 5L}
+        );
+        when(typeRepository.getPetCountByType()).thenReturn(rows);
+
+        List<PetCountByTypeDTO> report = typeService.getPetCountByType();
+
+        assertEquals(2, report.size());
+        assertTrue(report.stream().noneMatch(x -> "snake".equalsIgnoreCase(x.getTypeName())));
+    }
+
+    @Test
     public void testDeleteType() {
         Integer typeId = 3;
 
@@ -262,5 +280,22 @@ public class TypeServiceTest {
         }
 
         verify(typeRepository, times(1)).delete(existingEntity);
+    }
+
+    @Test
+    public void testFindTypeById_NotFound() {
+        Integer missingId = 999;
+        when(typeRepository.findById(missingId)).thenReturn(Optional.empty());
+
+        assertThrows(TypeNotFoundException.class, () -> typeService.findById(missingId));
+    }
+
+    @Test
+    public void testDeleteType_NotFound() {
+        Integer missingId = 999;
+        when(typeRepository.findById(missingId)).thenReturn(Optional.empty());
+
+        assertThrows(TypeNotFoundException.class, () -> typeService.delete(missingId));
+        verify(typeRepository, never()).delete(any(Type.class));
     }
 }

@@ -13,6 +13,7 @@ public interface TypeRepository extends JpaRepository<Type, Integer> {
     @Query("""
            SELECT t.name, COUNT(p.id)
            FROM types t LEFT JOIN pets p ON p.typeId = t.id
+           WHERE t.active = true
            GROUP BY t.id, t.name
            ORDER BY t.id
            """)
